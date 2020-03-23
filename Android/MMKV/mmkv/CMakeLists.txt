@@ -39,8 +39,6 @@ add_library( # Sets the name of the library.
         src/main/cpp/ThreadLock.h
         src/main/cpp/ThreadLock.cpp
         src/main/cpp/MMKVMetaInfo.hpp
-        src/main/cpp/ValueType.h
-        src/main/cpp/ValueType.cpp
         src/main/cpp/aes/AESCrypt.h
         src/main/cpp/aes/AESCrypt.cpp
         src/main/cpp/aes/openssl/aes.h
@@ -68,7 +66,7 @@ find_library( # Sets the name of the path variable.
 
         # Specifies the name of the NDK library that
         # you want CMake to locate.
-        log)
+        log )
 
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
@@ -80,4 +78,4 @@ target_link_libraries( # Specifies the target library.
         # Links the target library to the log library
         # included in the NDK.
         ${log-lib}
-        z)
+        z )

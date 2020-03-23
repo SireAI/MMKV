@@ -18,16 +18,29 @@
  * limitations under the License.
  */
 
-#include "native-bridge.h"
+#include "MMKVPredef.h"
+
 #include "MMBuffer.h"
 #include "MMKV.h"
 #include "MMKVLog.h"
+<<<<<<< HEAD
 #include "ValueType.h"
+=======
+#include "MemoryFile.h"
+>>>>>>> dev
 #include <cstdint>
 #include <jni.h>
 #include <string>
 
+#ifdef __aarch64__
+#    include "aes/openssl/openssl_aes.h"
+#    include "crc32/Checksum.h"
+#    include <asm/hwcap.h>
+#    include <sys/auxv.h>
+#endif
+
 using namespace std;
+using namespace mmkv;
 
 static jclass g_cls = nullptr;
 static jfieldID g_fileID = nullptr;
@@ -36,7 +49,6 @@ static jmethodID g_callbackOnFileLengthErrorID = nullptr;
 static jmethodID g_mmkvLogID = nullptr;
 static jmethodID g_callbackOnContentChange = nullptr;
 static JavaVM *g_currentJVM = nullptr;
-int g_android_api = __ANDROID_API_L__;
 
 static int registerNativeMethods(JNIEnv *env, jclass cls);
 
@@ -72,6 +84,7 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         return -5;
     }
 
+<<<<<<< HEAD
     g_callbackOnCRCFailID =
             env->GetStaticMethodID(g_cls, "onMMKVCRCCheckFail", "(Ljava/lang/String;)I");
     if (!g_callbackOnCRCFailID) {
@@ -84,6 +97,18 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
     g_mmkvLogID = env->GetStaticMethodID(
             g_cls, "mmkvLogImp", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V");
+=======
+    g_callbackOnCRCFailID = env->GetStaticMethodID(g_cls, "onMMKVCRCCheckFail", "(Ljava/lang/String;)I");
+    if (!g_callbackOnCRCFailID) {
+        MMKVError("fail to get method id for onMMKVCRCCheckFail");
+    }
+    g_callbackOnFileLengthErrorID = env->GetStaticMethodID(g_cls, "onMMKVFileLengthError", "(Ljava/lang/String;)I");
+    if (!g_callbackOnFileLengthErrorID) {
+        MMKVError("fail to get method id for onMMKVFileLengthError");
+    }
+    g_mmkvLogID =
+        env->GetStaticMethodID(g_cls, "mmkvLogImp", "(ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V");
+>>>>>>> dev
     if (!g_mmkvLogID) {
         MMKVError("fail to get method id for mmkvLogImp");
     }
@@ -108,6 +133,20 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         MMKVError("fail to get class android.os.Build.VERSION");
     }
 
+    // get CPU status of ARMv8 extensions (CRC32, AES)
+#ifdef __aarch64__
+    auto hwcaps = getauxval(AT_HWCAP);
+    if (hwcaps & HWCAP_AES) {
+        AES_set_encrypt_key = openssl_aes_armv8_set_encrypt_key;
+        AES_encrypt = openssl_aes_armv8_encrypt;
+        MMKVInfo("armv8 AES instructions is supported");
+    }
+    if (hwcaps & HWCAP_CRC32) {
+        CRC32 = mmkv::armv8_crc32;
+        MMKVInfo("armv8 CRC32 instructions is supported");
+    }
+#endif
+
     return JNI_VERSION_1_6;
 }
 
@@ -116,6 +155,7 @@ extern "C" JNIEXPORT JNICALL jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 namespace mmkv {
 
+<<<<<<< HEAD
     MMKV_JNI void jniInitialize(JNIEnv *env, jobject obj, jstring rootDir, jint logLevel) {
         if (!rootDir) {
             return;
@@ -127,6 +167,16 @@ namespace mmkv {
             MMKV::initializeMMKV(kstr);
             env->ReleaseStringUTFChars(rootDir, kstr);
         }
+=======
+MMKV_JNI void jniInitialize(JNIEnv *env, jobject obj, jstring rootDir, jint logLevel) {
+    if (!rootDir) {
+        return;
+    }
+    const char *kstr = env->GetStringUTFChars(rootDir, nullptr);
+    if (kstr) {
+        MMKV::initializeMMKV(kstr, (MMKVLogLevel) logLevel);
+        env->ReleaseStringUTFChars(rootDir, kstr);
+>>>>>>> dev
     }
 
     MMKV_JNI void onExit(JNIEnv *env, jobject obj) {
@@ -150,8 +200,22 @@ namespace mmkv {
         return "";
     }
 
+<<<<<<< HEAD
     jstring string2jstring(JNIEnv *env, const string &str) {
         return env->NewStringUTF(str.c_str());
+=======
+static jobjectArray vector2jarray(JNIEnv *env, const vector<string> &arr) {
+    if (!arr.empty()) {
+        jobjectArray result = env->NewObjectArray(arr.size(), env->FindClass("java/lang/String"), nullptr);
+        if (result) {
+            for (size_t index = 0; index < arr.size(); index++) {
+                jstring value = string2jstring(env, arr[index]);
+                env->SetObjectArrayElement(result, index, value);
+                env->DeleteLocalRef(value);
+            }
+        }
+        return result;
+>>>>>>> dev
     }
 
     jbyteArray buffer2byteArray(JNIEnv *env, const MMBuffer &buffer) {
@@ -160,6 +224,7 @@ namespace mmkv {
         return byteArray;
     }
 
+<<<<<<< HEAD
     jobject cInt2JavaInteger(JNIEnv *env, const int &value) {
         jclass int_cls = env->FindClass("java/lang/Integer");
         jmethodID int_costruct = env->GetMethodID(int_cls, "<init>", "(I)V");
@@ -174,30 +239,71 @@ namespace mmkv {
         jobject float_obj = env->NewObject(float_cls, float_costruct, value);
         env->DeleteLocalRef(float_cls);
         return float_obj;
+=======
+MMKVRecoverStrategic onMMKVError(const std::string &mmapID, MMKVErrorType errorType) {
+    jmethodID methodID = nullptr;
+    if (errorType == MMKVCRCCheckFail) {
+        methodID = g_callbackOnCRCFailID;
+    } else if (errorType == MMKVFileLength) {
+        methodID = g_callbackOnFileLengthErrorID;
     }
 
+    auto currentEnv = getCurrentEnv();
+    if (currentEnv && methodID) {
+        jstring str = string2jstring(currentEnv, mmapID);
+        auto strategic = currentEnv->CallStaticIntMethod(g_cls, methodID, str);
+        return static_cast<MMKVRecoverStrategic>(strategic);
+>>>>>>> dev
+    }
+
+<<<<<<< HEAD
     static jobject cByte2JavaByte(JNIEnv *env, const byte &value) {
         jclass byte_cls = env->FindClass("java/lang/Byte");
         jmethodID byte_costruct = env->GetMethodID(byte_cls, "<init>", "(B)V");
         jobject byte_obj = env->NewObject(byte_cls, byte_costruct, value);
         env->DeleteLocalRef(byte_cls);
         return byte_obj;
+=======
+static void mmkvLog(MMKVLogLevel level, const char *file, int line, const char *function, const std::string &message) {
+    auto currentEnv = getCurrentEnv();
+    if (currentEnv && g_mmkvLogID) {
+        jstring oFile = string2jstring(currentEnv, string(file));
+        jstring oFunction = string2jstring(currentEnv, string(function));
+        jstring oMessage = string2jstring(currentEnv, message);
+        int readLevel = level;
+        currentEnv->CallStaticVoidMethod(g_cls, g_mmkvLogID, readLevel, oFile, line, oFunction, oMessage);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     jobject cDouble2JavaDouble(JNIEnv *env, const double &value) {
         jclass double_cls = env->FindClass("java/lang/Double");
         jmethodID double_costruct = env->GetMethodID(double_cls, "<init>", "(D)V");
         jobject double_obj = env->NewObject(double_cls, double_costruct, value);
         env->DeleteLocalRef(double_cls);
         return double_obj;
+=======
+static void onContentChangedByOuterProcess(const std::string &mmapID) {
+    auto currentEnv = getCurrentEnv();
+    if (currentEnv && g_callbackOnContentChange) {
+        jstring str = string2jstring(currentEnv, mmapID);
+        currentEnv->CallStaticVoidMethod(g_cls, g_callbackOnContentChange, str);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     jobject cBool2JavaBool(JNIEnv *env, const bool &value) {
         jclass bool_cls = env->FindClass("java/lang/Boolean");
         jmethodID bool_costruct = env->GetMethodID(bool_cls, "<init>", "(Z)V");
         jobject bool_obj = env->NewObject(bool_cls, bool_costruct, value);
         env->DeleteLocalRef(bool_cls);
         return bool_obj;
+=======
+MMKV_JNI jlong getMMKVWithID(JNIEnv *env, jobject, jstring mmapID, jint mode, jstring cryptKey, jstring relativePath) {
+    MMKV *kv = nullptr;
+    if (!mmapID) {
+        return (jlong) kv;
+>>>>>>> dev
     }
 
     jobject cLong2JavaLong(JNIEnv *env, const long &value) {
@@ -248,6 +354,7 @@ namespace mmkv {
         jmethodID set_add = env->GetMethodID(set_cls, "add", "(Ljava/lang/Object;)Z");
         auto itr = arr.begin();
 
+<<<<<<< HEAD
         while (itr != arr.end()) {
             auto str = *itr;
             env->CallBooleanMethod(set_obj, set_add, string2jstring(env, str));
@@ -256,6 +363,12 @@ namespace mmkv {
 
         env->DeleteLocalRef(set_cls);
         return set_obj;
+=======
+MMKV_JNI jlong getMMKVWithIDAndSize(JNIEnv *env, jobject obj, jstring mmapID, jint size, jint mode, jstring cryptKey) {
+    MMKV *kv = nullptr;
+    if (!mmapID || size < 0) {
+        return (jlong) kv;
+>>>>>>> dev
     }
 
     static JNIEnv *getCurrentEnv() {
@@ -347,6 +460,12 @@ namespace mmkv {
             }
         }
 
+<<<<<<< HEAD
+=======
+MMKV_JNI jlong getMMKVWithAshmemFD(JNIEnv *env, jobject obj, jstring mmapID, jint fd, jint metaFD, jstring cryptKey) {
+    MMKV *kv = nullptr;
+    if (!mmapID || fd < 0 || metaFD < 0) {
+>>>>>>> dev
         return (jlong) kv;
     }
 
@@ -415,22 +534,39 @@ namespace mmkv {
         return nullptr;
     }
 
+<<<<<<< HEAD
     MMKV_JNI jint ashmemFD(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             return kv->ashmemFD();
         }
         return -1;
+=======
+MMKV_JNI jboolean encodeBool(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean value) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->set((bool) value, key);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jint ashmemMetaFD(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             return kv->ashmemMetaFD();
         }
         return -1;
+=======
+MMKV_JNI jboolean decodeBool(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean defaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->getBool(key, defaultValue);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean encodeBool(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean value) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
         if (kv && oKey) {
@@ -438,8 +574,16 @@ namespace mmkv {
             return (jboolean) kv->setBool(value, key);
         }
         return (jboolean) false;
+=======
+MMKV_JNI jboolean encodeInt(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jint value) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->set((int32_t) value, key);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean
     decodeBool(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean defaultValue) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -448,8 +592,16 @@ namespace mmkv {
             return (jboolean) kv->getBoolForKey(key, defaultValue);
         }
         return defaultValue;
+=======
+MMKV_JNI jint decodeInt(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jint defaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jint) kv->getInt32(key, defaultValue);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean encodeInt(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jint value) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
         if (kv && oKey) {
@@ -457,8 +609,16 @@ namespace mmkv {
             return (jboolean) kv->setInt32(value, key);
         }
         return (jboolean) false;
+=======
+MMKV_JNI jboolean encodeLong(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jlong value) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->set((int64_t) value, key);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jint
     decodeInt(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jint defaultValue) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -467,8 +627,16 @@ namespace mmkv {
             return (jint) kv->getInt32ForKey(key, defaultValue);
         }
         return defaultValue;
+=======
+MMKV_JNI jlong decodeLong(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jlong defaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jlong) kv->getInt64(key, defaultValue);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean
     encodeLong(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jlong value) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -477,8 +645,16 @@ namespace mmkv {
             return (jboolean) kv->setInt64(value, key);
         }
         return (jboolean) false;
+=======
+MMKV_JNI jboolean encodeFloat(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jfloat value) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->set((float) value, key);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jlong
     decodeLong(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jlong defaultValue) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -487,8 +663,16 @@ namespace mmkv {
             return (jlong) kv->getInt64ForKey(key, defaultValue);
         }
         return defaultValue;
+=======
+MMKV_JNI jfloat decodeFloat(JNIEnv *env, jobject, jlong handle, jstring oKey, jfloat defaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jfloat) kv->getFloat(key, defaultValue);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean
     encodeFloat(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jfloat value) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -497,8 +681,16 @@ namespace mmkv {
             return (jboolean) kv->setFloat(value, key);
         }
         return (jboolean) false;
+=======
+MMKV_JNI jboolean encodeDouble(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jdouble value) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jboolean) kv->set((double) value, key);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jfloat
     decodeFloat(JNIEnv *env, jobject, jlong handle, jstring oKey, jfloat defaultValue) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
@@ -507,24 +699,55 @@ namespace mmkv {
             return (jfloat) kv->getFloatForKey(key, defaultValue);
         }
         return defaultValue;
+=======
+MMKV_JNI jdouble decodeDouble(JNIEnv *env, jobject, jlong handle, jstring oKey, jdouble defaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return (jdouble) kv->getDouble(key, defaultValue);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean
     encodeDouble(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jdouble value) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
         if (kv && oKey) {
             string key = jstring2string(env, oKey);
             return (jboolean) kv->setDouble(value, key);
+=======
+MMKV_JNI jboolean encodeString(JNIEnv *env, jobject, jlong handle, jstring oKey, jstring oValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        if (oValue) {
+            string value = jstring2string(env, oValue);
+            return (jboolean) kv->set(value, key);
+        } else {
+            kv->removeValueForKey(key);
+            return (jboolean) true;
+>>>>>>> dev
         }
         return (jboolean) false;
     }
 
+<<<<<<< HEAD
     MMKV_JNI jdouble
     decodeDouble(JNIEnv *env, jobject, jlong handle, jstring oKey, jdouble defaultValue) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
         if (kv && oKey) {
             string key = jstring2string(env, oKey);
             return (jdouble) kv->getDoubleForKey(key, defaultValue);
+=======
+MMKV_JNI jstring decodeString(JNIEnv *env, jobject obj, jlong handle, jstring oKey, jstring oDefaultValue) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        string value;
+        bool hasValue = kv->getString(key, value);
+        if (hasValue) {
+            return string2jstring(env, value);
+>>>>>>> dev
         }
         return defaultValue;
     }
@@ -595,15 +818,34 @@ namespace mmkv {
                 env->SetByteArrayRegion(result, 0, value.length(), (const jbyte *) value.getPtr());
                 return result;
             }
+<<<<<<< HEAD
+=======
+            return (jboolean) kv->set(value, key);
+        } else {
+            kv->removeValueForKey(key);
+            return (jboolean) true;
+>>>>>>> dev
         }
         return nullptr;
     }
 
+<<<<<<< HEAD
     MMKV_JNI jobjectArray allKeys(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             vector<string> keys = kv->allKeys();
             return vector2jarray(env, keys);
+=======
+MMKV_JNI jbyteArray decodeBytes(JNIEnv *env, jobject obj, jlong handle, jstring oKey) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        MMBuffer value = kv->getBytes(key);
+        if (value.length() > 0) {
+            jbyteArray result = env->NewByteArray(value.length());
+            env->SetByteArrayRegion(result, 0, value.length(), (const jbyte *) value.getPtr());
+            return result;
+>>>>>>> dev
         }
         return nullptr;
     }
@@ -667,12 +909,19 @@ namespace mmkv {
         }
     }
 
+<<<<<<< HEAD
     MMKV_JNI jboolean isFileValid(JNIEnv *env, jclass type, jstring oMmapID) {
         if (oMmapID) {
             string mmapID = jstring2string(env, oMmapID);
             return (jboolean) MMKV::isFileValid(mmapID);
         }
         return (jboolean) false;
+=======
+MMKV_JNI void sync(JNIEnv *env, jobject instance, jboolean sync) {
+    MMKV *kv = getMMKV(env, instance);
+    if (kv) {
+        kv->sync((SyncFlag) sync);
+>>>>>>> dev
     }
 
     MMKV_JNI jboolean
@@ -691,6 +940,7 @@ namespace mmkv {
         return (jboolean) false;
     }
 
+<<<<<<< HEAD
     MMKV_JNI jobjectArray decodeStringSet(JNIEnv *env, jobject, jlong handle, jstring oKey) {
         MMKV *kv = reinterpret_cast<MMKV *>(handle);
         if (kv && oKey) {
@@ -700,22 +950,52 @@ namespace mmkv {
             if (hasValue) {
                 return vector2jarray(env, value);
             }
+=======
+MMKV_JNI jboolean encodeSet(JNIEnv *env, jobject, jlong handle, jstring oKey, jobjectArray arrStr) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        if (arrStr) {
+            vector<string> value = jarray2vector(env, arrStr);
+            return (jboolean) kv->set(value, key);
+        } else {
+            kv->removeValueForKey(key);
+            return (jboolean) true;
+>>>>>>> dev
         }
         return nullptr;
     }
 
+<<<<<<< HEAD
     MMKV_JNI void clearMemoryCache(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             kv->clearMemoryState();
+=======
+MMKV_JNI jobjectArray decodeStringSet(JNIEnv *env, jobject, jlong handle, jstring oKey) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        vector<string> value;
+        bool hasValue = kv->getVector(key, value);
+        if (hasValue) {
+            return vector2jarray(env, value);
+>>>>>>> dev
         }
     }
 
+<<<<<<< HEAD
     MMKV_JNI void lock(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             kv->lock();
         }
+=======
+MMKV_JNI void clearMemoryCache(JNIEnv *env, jobject instance) {
+    MMKV *kv = getMMKV(env, instance);
+    if (kv) {
+        kv->clearMemoryCache();
+>>>>>>> dev
     }
 
     MMKV_JNI void unlock(JNIEnv *env, jobject instance) {
@@ -804,10 +1084,19 @@ namespace mmkv {
         g_currentLogLevel = (MMKVLogLevel) level;
     }
 
+<<<<<<< HEAD
     MMKV_JNI void setLogReDirecting(JNIEnv *env, jclass type, jboolean enable) {
         g_isLogRedirecting = (enable == JNI_TRUE);
+=======
+MMKV_JNI jint valueSize(JNIEnv *env, jobject, jlong handle, jstring oKey, jboolean actualSize) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return static_cast<jint>(kv->getValueSize(key, (bool) actualSize));
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
     MMKV_JNI jlong createNB(JNIEnv *env, jobject instance, jint size) {
         auto ptr = malloc(static_cast<size_t>(size));
         if (!ptr) {
@@ -820,6 +1109,25 @@ namespace mmkv {
     MMKV_JNI void destroyNB(JNIEnv *env, jobject instance, jlong pointer, jint size) {
         free(reinterpret_cast<void *>(pointer));
     }
+=======
+MMKV_JNI void setLogLevel(JNIEnv *env, jclass type, jint level) {
+    MMKV::setLogLevel((MMKVLogLevel) level);
+}
+
+MMKV_JNI void setCallbackHandler(JNIEnv *env, jclass type, jboolean logReDirecting, jboolean hasCallback) {
+    if (logReDirecting == JNI_TRUE) {
+        MMKV::registerLogHandler(mmkvLog);
+    } else {
+        MMKV::unRegisterLogHandler();
+    }
+
+    if (hasCallback == JNI_TRUE) {
+        MMKV::registerErrorHandler(onMMKVError);
+    } else {
+        MMKV::unRegisterErrorHandler();
+    }
+}
+>>>>>>> dev
 
     MMKV_JNI jint writeValueToNB(
             JNIEnv *env, jobject instance, jlong handle, jstring oKey, jlong pointer, jint size) {
@@ -835,13 +1143,31 @@ namespace mmkv {
         g_isContentChangeNotifying = (notify == JNI_TRUE);
     }
 
+<<<<<<< HEAD
     MMKV_JNI void checkContentChanged(JNIEnv *env, jobject instance) {
         MMKV *kv = getMMKV(env, instance);
         if (kv) {
             kv->checkContentChanged();
         }
+=======
+MMKV_JNI jint writeValueToNB(JNIEnv *env, jobject instance, jlong handle, jstring oKey, jlong pointer, jint size) {
+    MMKV *kv = reinterpret_cast<MMKV *>(handle);
+    if (kv && oKey) {
+        string key = jstring2string(env, oKey);
+        return kv->writeValueToBuffer(key, reinterpret_cast<void *>(pointer), size);
+>>>>>>> dev
     }
 
+<<<<<<< HEAD
+=======
+MMKV_JNI void setWantsContentChangeNotify(JNIEnv *env, jclass type, jboolean notify) {
+    if (notify == JNI_TRUE) {
+        MMKV::registerContentChangeHandler(onContentChangedByOuterProcess);
+    } else {
+        MMKV::unRegisterContentChangeHandler();
+    }
+}
+>>>>>>> dev
 
     MMKV_JNI jobject getAll(JNIEnv *env, jobject instance) {
         //make map object
@@ -851,6 +1177,7 @@ namespace mmkv {
 } // namespace mmkv
 
 static JNINativeMethod g_methods[] = {
+<<<<<<< HEAD
         {"onExit",                            "()V",                                       (void *) mmkv::onExit},
         {"cryptKey",                          "()Ljava/lang/String;",                      (void *) mmkv::cryptKey},
         {"reKey",                             "(Ljava/lang/String;)Z",                     (void *) mmkv::reKey},
@@ -908,6 +1235,60 @@ static JNINativeMethod g_methods[] = {
         {"setWantsContentChangeNotify",       "(Z)V",                                      (void *) mmkv::setWantsContentChangeNotify},
         {"checkContentChangedByOuterProcess", "()V",                                       (void *) mmkv::checkContentChanged},
         {"getAllNative",                           "()Ljava/util/Map;",                         (void *) mmkv::getAll}
+=======
+    {"onExit", "()V", (void *) mmkv::onExit},
+    {"cryptKey", "()Ljava/lang/String;", (void *) mmkv::cryptKey},
+    {"reKey", "(Ljava/lang/String;)Z", (void *) mmkv::reKey},
+    {"checkReSetCryptKey", "(Ljava/lang/String;)V", (void *) mmkv::checkReSetCryptKey},
+    {"pageSize", "()I", (void *) mmkv::pageSize},
+    {"mmapID", "()Ljava/lang/String;", (void *) mmkv::mmapID},
+    {"lock", "()V", (void *) mmkv::lock},
+    {"unlock", "()V", (void *) mmkv::unlock},
+    {"tryLock", "()Z", (void *) mmkv::tryLock},
+    {"allKeys", "()[Ljava/lang/String;", (void *) mmkv::allKeys},
+    {"removeValuesForKeys", "([Ljava/lang/String;)V", (void *) mmkv::removeValuesForKeys},
+    {"clearAll", "()V", (void *) mmkv::clearAll},
+    {"trim", "()V", (void *) mmkv::trim},
+    {"close", "()V", (void *) mmkv::close},
+    {"clearMemoryCache", "()V", (void *) mmkv::clearMemoryCache},
+    {"sync", "(Z)V", (void *) mmkv::sync},
+    {"isFileValid", "(Ljava/lang/String;)Z", (void *) mmkv::isFileValid},
+    {"ashmemFD", "()I", (void *) mmkv::ashmemFD},
+    {"ashmemMetaFD", "()I", (void *) mmkv::ashmemMetaFD},
+    {"jniInitialize", "(Ljava/lang/String;I)V", (void *) mmkv::jniInitialize},
+    {"getMMKVWithID", "(Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;)J", (void *) mmkv::getMMKVWithID},
+    {"getMMKVWithIDAndSize", "(Ljava/lang/String;IILjava/lang/String;)J", (void *) mmkv::getMMKVWithIDAndSize},
+    {"getDefaultMMKV", "(ILjava/lang/String;)J", (void *) mmkv::getDefaultMMKV},
+    {"getMMKVWithAshmemFD", "(Ljava/lang/String;IILjava/lang/String;)J", (void *) mmkv::getMMKVWithAshmemFD},
+    {"encodeBool", "(JLjava/lang/String;Z)Z", (void *) mmkv::encodeBool},
+    {"decodeBool", "(JLjava/lang/String;Z)Z", (void *) mmkv::decodeBool},
+    {"encodeInt", "(JLjava/lang/String;I)Z", (void *) mmkv::encodeInt},
+    {"decodeInt", "(JLjava/lang/String;I)I", (void *) mmkv::decodeInt},
+    {"encodeLong", "(JLjava/lang/String;J)Z", (void *) mmkv::encodeLong},
+    {"decodeLong", "(JLjava/lang/String;J)J", (void *) mmkv::decodeLong},
+    {"encodeFloat", "(JLjava/lang/String;F)Z", (void *) mmkv::encodeFloat},
+    {"decodeFloat", "(JLjava/lang/String;F)F", (void *) mmkv::decodeFloat},
+    {"encodeDouble", "(JLjava/lang/String;D)Z", (void *) mmkv::encodeDouble},
+    {"decodeDouble", "(JLjava/lang/String;D)D", (void *) mmkv::decodeDouble},
+    {"encodeString", "(JLjava/lang/String;Ljava/lang/String;)Z", (void *) mmkv::encodeString},
+    {"decodeString", "(JLjava/lang/String;Ljava/lang/String;)Ljava/lang/String;", (void *) mmkv::decodeString},
+    {"encodeSet", "(JLjava/lang/String;[Ljava/lang/String;)Z", (void *) mmkv::encodeSet},
+    {"decodeStringSet", "(JLjava/lang/String;)[Ljava/lang/String;", (void *) mmkv::decodeStringSet},
+    {"encodeBytes", "(JLjava/lang/String;[B)Z", (void *) mmkv::encodeBytes},
+    {"decodeBytes", "(JLjava/lang/String;)[B", (void *) mmkv::decodeBytes},
+    {"containsKey", "(JLjava/lang/String;)Z", (void *) mmkv::containsKey},
+    {"count", "(J)J", (void *) mmkv::count},
+    {"totalSize", "(J)J", (void *) mmkv::totalSize},
+    {"removeValueForKey", "(JLjava/lang/String;)V", (void *) mmkv::removeValueForKey},
+    {"valueSize", "(JLjava/lang/String;Z)I", (void *) mmkv::valueSize},
+    {"setLogLevel", "(I)V", (void *) mmkv::setLogLevel},
+    {"setCallbackHandler", "(ZZ)V", (void *) mmkv::setCallbackHandler},
+    {"createNB", "(I)J", (void *) mmkv::createNB},
+    {"destroyNB", "(JI)V", (void *) mmkv::destroyNB},
+    {"writeValueToNB", "(JLjava/lang/String;JI)I", (void *) mmkv::writeValueToNB},
+    {"setWantsContentChangeNotify", "(Z)V", (void *) mmkv::setWantsContentChangeNotify},
+    {"checkContentChangedByOuterProcess", "()V", (void *) mmkv::checkContentChanged},
+>>>>>>> dev
 };
 
 static int registerNativeMethods(JNIEnv *env, jclass cls) {
