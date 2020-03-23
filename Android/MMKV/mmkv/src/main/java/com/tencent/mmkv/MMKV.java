@@ -476,7 +476,44 @@ public class MMKV implements SharedPreferences, SharedPreferences.Editor {
         return defaultValue;
     }
 
-    // return the actual size consumption of the key's value
+    public <T extends Parcelable> T decodeParcelable(byte[] parcelBytes,Class<T> tClass) {
+        T result = null;
+        if(parcelBytes == null || parcelBytes.length == 0){
+            return result;
+        }
+        Parcel source = Parcel.obtain();
+        source.unmarshall(parcelBytes, 0, parcelBytes.length);
+        source.setDataPosition(0);
+        try {
+            String name = tClass.toString();
+            Parcelable.Creator<T> creator;
+            synchronized (mCreators) {
+                creator = (Parcelable.Creator<T>) mCreators.get(name);
+                if (creator == null) {
+                    Field f = tClass.getField("CREATOR");
+                    creator = (Parcelable.Creator<T>) f.get(null);
+                    if (creator != null) {
+                        mCreators.put(name, creator);
+                    }
+                }
+            }
+            if (creator != null) {
+                result =  creator.createFromParcel(source);
+            } else {
+                throw new Exception("Parcelable protocol requires a "
+                        + "non-null static Parcelable.Creator object called "
+                        + "CREATOR on class " + name);
+            }
+        } catch (Exception e) {
+            simpleLog(MMKVLogLevel.LevelError, e.toString());
+        } finally {
+            source.recycle();
+        }
+        return result;
+    }
+
+
+        // return the actual size consumption of the key's value
     // Note: might be a little bigger than value's length
     public int getValueSize(String key) {
         return valueSize(nativeHandle, key, false);
