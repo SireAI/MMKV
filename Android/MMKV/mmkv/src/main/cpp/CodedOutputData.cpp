@@ -180,6 +180,6 @@ void CodedOutputData::writeRawLittleEndian64(int64_t value) {
     this->writeRawByte(static_cast<uint8_t>((value >> 56) & 0xff));
 }
 
-inline void CodedOutputData::writeValueType(ValueType type) {
+ void CodedOutputData::writeValueType(ValueType type) {
     this->writeRawByte(type);
 }

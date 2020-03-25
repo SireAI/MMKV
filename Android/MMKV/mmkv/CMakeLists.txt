@@ -17,6 +17,8 @@ add_library( # Sets the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
+        src/main/cpp/ValueType.h
+        src/main/cpp/ValueType.cpp
         src/main/cpp/native-bridge.cpp
         src/main/cpp/MMKV.h
         src/main/cpp/MMKV.cpp
@@ -39,8 +41,6 @@ add_library( # Sets the name of the library.
         src/main/cpp/ThreadLock.h
         src/main/cpp/ThreadLock.cpp
         src/main/cpp/MMKVMetaInfo.hpp
-        src/main/cpp/ValueType.h
-        src/main/cpp/ValueType.cpp
         src/main/cpp/aes/AESCrypt.h
         src/main/cpp/aes/AESCrypt.cpp
         src/main/cpp/aes/openssl/aes.h

@@ -28,6 +28,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "ValueType.h"
 
 #define TYPE_POSITION 1
 class CodedInputData;

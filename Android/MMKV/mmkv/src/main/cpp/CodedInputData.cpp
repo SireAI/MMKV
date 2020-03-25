@@ -198,6 +198,6 @@ int8_t CodedInputData::readRawByte() {
     return bytes[m_position++];
 }
 
-inline ValueType CodedInputData::readValueType() {
+   ValueType CodedInputData::readValueType() {
     return static_cast<ValueType>(this->readRawByte());
 }

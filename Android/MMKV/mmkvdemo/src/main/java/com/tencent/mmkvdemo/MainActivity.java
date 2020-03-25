@@ -103,18 +103,19 @@ public class MainActivity
         button_read_int.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
 //                interProcessBaselineTest(BenchMarkBaseService.CMD_READ_INT);
-                MMKV.defaultMMKV().removeValuesForKeys(new String[]{"testInt","testString","testBool","testDouble","testFloat","testLong","testSet"});
+//                MMKV.defaultMMKV().removeValuesForKeys(new String[]{"testInt","testString","testBool","testDouble","testFloat","testLong","testSet"});
 //                MMKV.defaultMMKV().removeValueForKey("testDouble");
 //                MMKV.defaultMMKV().removeValueForKey("testbyte");
-                final int testInt = MMKV.defaultMMKV().decodeInt("testInt", -1);
-                final String testString = MMKV.defaultMMKV().decodeString("testString", "null");
-                final byte[] testbyte = MMKV.defaultMMKV().decodeBytes("testbyte", new byte[0]);
-                final boolean testBool = MMKV.defaultMMKV().decodeBool("testBool", false);
-                final double testDouble = MMKV.defaultMMKV().decodeDouble("testDouble", 0);
-                final float testFloat = MMKV.defaultMMKV().decodeFloat("testFloat", 0.1f);
-                final float testLong = MMKV.defaultMMKV().decodeLong("testLong", 1l);
-                final Set<String> testSet = MMKV.defaultMMKV().decodeStringSet("testSet", new HashSet<String>());
-                final TestParcelable testParcel = MMKV.defaultMMKV().decodeParcelable("testParcel", TestParcelable.class);
+//                final int testInt = MMKV.defaultMMKV().decodeInt("testInt", -1);
+//                final String testString = MMKV.defaultMMKV().decodeString("testString", "null");
+//                final byte[] testbyte = MMKV.defaultMMKV().decodeBytes("testbyte", new byte[0]);
+//                final boolean testBool = MMKV.defaultMMKV().decodeBool("testBool", false);
+//                final double testDouble = MMKV.defaultMMKV().decodeDouble("testDouble", 0);
+//                final float testFloat = MMKV.defaultMMKV().decodeFloat("testFloat", 0.1f);
+//                final float testLong = MMKV.defaultMMKV().decodeLong("testLong", 1l);
+//                final Set<String> testSet = MMKV.defaultMMKV().decodeStringSet("testSet", new HashSet<String>());
+//                final TestParcelable testParcel = MMKV.defaultMMKV().decodeParcelable("testParcel", TestParcelable.class);
+                MMKV.defaultMMKV().clear();
                 final Map<String, ?> all = MMKV.defaultMMKV().getAll();
                 System.out.println("====>"+all);
             }

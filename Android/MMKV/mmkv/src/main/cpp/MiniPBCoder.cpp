@@ -24,7 +24,6 @@
 #include "MMBuffer.h"
 #include "PBEncodeItem.hpp"
 #include "PBUtility.h"
-#include "ValueType.h"
 #include <string>
 #include <sys/stat.h>
 #include <vector>
